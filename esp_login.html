@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>تسجيل الدخول - Smart Power</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --accent: #3498db;
+      --main-bg: #f0f0f0;
+      --main-text: #2c3e50;
+      --card-bg: #fff;
+      --card-text: #2c3e50;
+    }
+    body.dark {
+      --main-bg: #121212;
+      --main-text: #f1f1f1;
+      --card-bg: #1e1e1e;
+      --card-text: #f1f1f1;
+    }
+    body {
+      background: var(--main-bg);
+      color: var(--main-text);
+      font-family: Arial,sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .22s, color .22s;
+      direction: rtl;
+    }
+    .login-card {
+      background: var(--card-bg);
+      border-radius: 15px;
+      max-width: 360px;
+      width: 95vw;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.10);
+      padding: 32px 24px 18px 24px;
+      text-align: center;
+    }
+    .login-title {
+      font-size: 1.3em;
+      color: var(--accent);
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .login-input {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 13px;
+      border-radius: 7px;
+      border: 1px solid #ccc;
+      background: var(--card-bg);
+      color: var(--main-text);
+      font-size: 1em;
+      box-sizing: border-box;
+      outline: none;
+      transition: border .16s;
+    }
+    .login-input:focus {
+      border: 1.5px solid var(--accent);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 11px 0;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-weight: bold;
+      font-size: 1.08em;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      transition: background .14s;
+    }
+    .login-btn:active { background: #2172b8;}
+    .login-alert {
+      color: #c0392b;
+      background: #ffe6e6;
+      border-radius: 7px;
+      margin-top: 13px;
+      padding: 8px 5px;
+      font-size: 1.06em;
+      display: none;
+    }
+    .theme-toggle-demo {
+      position: fixed;
+      top: 20px;
+      left: 22px;
+      z-index: 99;
+      font-size: 21px;
+      color: var(--accent);
+      background: #fff;
+      border-radius: 50%;
+      padding: 8px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+      transition: color .18s, background .18s;
+    }
+    body.dark .theme-toggle-demo {
+      color: #f1c40f;
+      background: #232a36;
+    }
+    .footer {
+      margin: 36px auto 0 auto;
+      text-align: center;
+      font-size: 13px;
+      color: #888;
+      position: fixed;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle-demo" id="themeToggleBtn" title="تغيير الوضع">
+    <i class="fas fa-moon"></i>
+  </button>
+  <form class="login-card" id="loginForm" autocomplete="off">
+    <div class="login-title"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</div>
+    <input class="login-input" type="text" id="username" name="username" placeholder="اسم المستخدم" required autocomplete="username">
+    <input class="login-input" type="password" id="password" name="password" placeholder="كلمة المرور" required autocomplete="current-password">
+    <button class="login-btn" type="submit">دخول</button>
+    <div class="login-alert" id="loginAlert">بيانات الدخول غير صحيحة!</div>
+  </form>
+  <div class="footer">&copy; Smart Power Monitor Dashboard</div>
+  <script>
+    // الوضع الليلي
+    document.getElementById('themeToggleBtn').onclick = function() {
+      document.body.classList.toggle('dark');
+      const icon = this.querySelector('i');
+      icon.classList.toggle('fa-moon');
+      icon.classList.toggle('fa-sun');
+    };
+
+    // نموذج الدخول
+    const form = document.getElementById('loginForm');
+    const alertBox = document.getElementById('loginAlert');
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      alertBox.style.display = "none";
+      const user = form.username.value.trim();
+      const pass = form.password.value;
+      // أرسل البيانات إلى API تسجيل الدخول
+      fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({username: user, password: pass})
+      })
+      .then(r=>r.ok?r.json():Promise.reject())
+      .then(res=>{
+        if(res && res.success && res.token) {
+          localStorage.setItem("session_token", res.token);
+          localStorage.setItem("session_user", user);
+          // توجيه إلى الصفحة الرئيسية
+          window.location.href = "index.html";
+        } else {
+          alertBox.textContent = res && res.message ? res.message : "بيانات الدخول غير صحيحة!";
+          alertBox.style.display = "block";
+        }
+      })
+      .catch(()=>{
+        alertBox.textContent = "تعذر الاتصال بالخادم!";
+        alertBox.style.display = "block";
+      });
+    };
+
+    // دعم Enter للحقول
+    form.username.onkeydown = form.password.onkeydown = function(e) {
+      if(e.key === "Enter") form.querySelector('.login-btn').click();
+    };
+
+    // إذا كان هناك جلسة مخزنة بالفعل، تحول مباشر
+    if(localStorage.getItem("session_token")) {
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>

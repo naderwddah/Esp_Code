@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>الإعدادات - Smart Power</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --accent: #3498db;
+      --sidebar-width: 220px;
+      --sidebar-bg: #f4f4f4;
+      --sidebar-text: #222;
+      --sidebar-hover: #e3e8f0;
+      --main-bg: #f0f0f0;
+      --main-text: #2c3e50;
+      --card-bg: #fff;
+      --card-text: #2c3e50;
+      --card-label: #7f8c8d;
+    }
+    body.dark {
+      --sidebar-bg: #1a202a;
+      --sidebar-text: #e6e6e6;
+      --sidebar-hover: #232a36;
+      --main-bg: #121212;
+      --main-text: #f1f1f1;
+      --card-bg: #1e1e1e;
+      --card-text: #f1f1f1;
+      --card-label: #b0b0b0;
+    }
+    body {
+      background: var(--main-bg);
+      color: var(--main-text);
+      font-family: Arial,sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      transition: background .22s, color .22s;
+      direction: rtl;
+    }
+    .sidebar {
+      position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh;
+      background: var(--sidebar-bg); color: var(--sidebar-text); z-index: 2000;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.08);
+      display: flex; flex-direction: column; padding-top: 46px;
+      transform: translateX(-100%);
+      transition: transform .23s, background .22s, color .22s;
+      will-change: transform;
+    }
+    .sidebar.open { transform: none;}
+    .sidebar .sidebar-title { text-align: center; font-weight: bold; font-size: 1.15em; margin-bottom: 27px; color: var(--accent);}
+    .sidebar-links { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 0 20px;}
+    .sidebar-link { display: flex; align-items: center; gap: 13px; padding: 11px 10px; border-radius: 8px; color: inherit; text-decoration: none; font-size: 1em; transition: background .18s, color .19s; cursor: pointer; border: none; background: none; outline: none; font-family: inherit;}
+    .sidebar-link:hover, .sidebar-link.active { background: var(--sidebar-hover); color: var(--accent);}
+    .sidebar-link i { width: 22px; text-align: center; font-size: 1.17em;}
+    .sidebar-footer {text-align: center; padding: 15px 5px 12px 5px; font-size: 0.9em; color: #aaa; border-top: 1px solid #ddd;}
+    body.dark .sidebar-footer { border-top: 1px solid #232a36; color: #888;}
+    .sidebar-toggle {position: fixed; top: 16px; left: 16px; z-index: 2200; border: none; border-radius: 8px; font-size: 24px; cursor: pointer; padding: 8px 13px; background: #fff; color: var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,0.07);}
+    .sidebar-toggle .fa-bars { display: inline;}
+    .sidebar.open ~ .sidebar-toggle .fa-bars { display: none;}
+    .sidebar-toggle .fa-times { display: none;}
+    .sidebar.open ~ .sidebar-toggle .fa-times { display: inline;}
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.13); z-index: 1999;}
+    .sidebar.open ~ .sidebar-overlay { display: block;}
+    body.sidebar-open { overflow: hidden;}
+    .theme-toggle-demo { position: fixed; top: 17px; right: 16px; z-index: 2300; font-size: 21px; color: var(--accent); background: #fff; border-radius: 50%; padding: 8px; cursor: pointer; border: none; outline: none; box-shadow: 0 1px 5px rgba(0,0,0,0.07);}
+    body.dark .theme-toggle-demo { color: #f1c40f; background: #232a36;}
+    .main-content { margin-left: 0; padding: 50px 18px 0 18px; transition: margin .22s; min-height: 100vh;}
+    @media (min-width: 700px) { .sidebar.open ~ .main-content { margin-left: var(--sidebar-width); } }
+
+    /* إعدادات */
+    .settings-title {
+      text-align: center;
+      color: var(--main-text);
+      font-size: 1.5em;
+      margin: 0 0 16px 0;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    .settings-card {
+      background: var(--card-bg);
+      border-radius: 13px;
+      max-width: 420px;
+      margin: 22px auto 0 auto;
+      padding: 25px 22px 20px 22px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .settings-group {
+      margin-bottom: 22px;
+    }
+    .settings-label {
+      font-weight: bold;
+      color: var(--main-text);
+      margin-bottom: 7px;
+      display: block;
+      font-size: 1.05em;
+    }
+    .input-row {
+      display: flex; align-items: center; gap: 9px;
+    }
+    input[type="text"], input[type="password"], select, input[type="number"] {
+      width: 100%;
+      font-size: 1em;
+      border-radius: 7px;
+      border: 1px solid #ccc;
+      padding: 7px 10px;
+      background: var(--card-bg);
+      color: var(--main-text);
+      transition: background .2s, color .2s;
+      margin-bottom: 4px;
+    }
+    input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--accent);
+    }
+    .save-btn {
+      width: 100%; font-size: 1.09em; padding: 11px 0;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 7px;
+      font-weight: bold;
+      margin-top: 15px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.09);
+      transition: background .17s;
+    }
+    .save-btn:active { background: #2172b8;}
+    .settings-alert {
+      text-align: center;
+      margin: 11px 0 0 0;
+      font-size: 1.06em;
+      padding: 7px;
+      border-radius: 7px;
+      display: none;
+    }
+    .settings-alert.success { background: #d8f8e6; color: #146c43;}
+    .settings-alert.fail { background: #ffe6e6; color: #c0392b;}
+    .footer { margin: 36px auto 0 auto; text-align: center; font-size: 14px; color: #888;}
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">
+      <i class="fas fa-plug"></i> Smart Power
+    </div>
+    <div class="sidebar-links">
+      <a class="sidebar-link" href="index.html">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a class="sidebar-link" href="analytics.html">
+        <i class="fas fa-chart-line"></i> History / Analytics
+      </a>
+      <a class="sidebar-link active" href="settings.html">
+        <i class="fas fa-cog"></i> Settings
+      </a>
+      <a class="sidebar-link" href="#network">
+        <i class="fas fa-network-wired"></i> Network Info
+      </a>
+      <a class="sidebar-link" href="#system">
+        <i class="fas fa-tools"></i> System / Admin
+      </a>
+      <a class="sidebar-link" href="#login">
+        <i class="fas fa-sign-in-alt"></i> Login
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      &copy; 2025 Smart Power
+    </div>
+  </nav>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open/Close Sidebar">
+    <i class="fas fa-bars"></i>
+    <i class="fas fa-times"></i>
+  </button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <button class="theme-toggle-demo" id="themeToggleBtn" title="Toggle Theme">
+    <i class="fas fa-moon"></i>
+  </button>
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="settings-title"><i class="fas fa-cog"></i> الإعدادات</div>
+    <form class="settings-card" id="settingsForm" autocomplete="off">
+      <!-- Wi-Fi -->
+      <div class="settings-group">
+        <span class="settings-label"><i class="fas fa-wifi"></i> إعدادات Wi-Fi</span>
+        <div class="input-row">
+          <label for="ssid" style="min-width:65px;">SSID</label>
+          <input type="text" id="ssid" name="ssid" required maxlength="32" autocomplete="off">
+        </div>
+        <div class="input-row">
+          <label for="wifiPass" style="min-width:65px;">Password</label>
+          <input type="password" id="wifiPass" name="wifiPass" maxlength="63" autocomplete="new-password">
+        </div>
+      </div>
+      <!-- Threshold -->
+      <div class="settings-group">
+        <span class="settings-label"><i class="fa fa-exclamation-triangle"></i> حد معامل القدرة الأدنى</span>
+        <input type="number" step="0.01" min="0.7" max="1" id="pfThreshold" name="pfThreshold" value="0.85" required>
+      </div>
+      <!-- صوت التنبيه -->
+      <div class="settings-group">
+        <span class="settings-label"><i class="fa fa-volume-up"></i> صوت التنبيه</span>
+        <label style="font-weight:normal">
+          <input type="checkbox" id="soundEnable" name="soundEnable">
+          تفعيل الصوت
+        </label>
+      </div>
+      <!-- المنطقة الزمنية -->
+      <div class="settings-group">
+        <span class="settings-label"><i class="fa fa-clock"></i> المنطقة الزمنية</span>
+        <select id="timezone" name="timezone">
+          <option value="UTC+0">UTC+0</option>
+          <option value="UTC+1">UTC+1</option>
+          <option value="UTC+2">UTC+2</option>
+          <option value="UTC+3">UTC+3</option>
+          <option value="UTC+4">UTC+4</option>
+          <option value="UTC+5">UTC+5</option>
+          <option value="UTC+6">UTC+6</option>
+          <option value="UTC+7">UTC+7</option>
+          <option value="UTC+8">UTC+8</option>
+          <option value="UTC+9">UTC+9</option>
+          <option value="UTC+10">UTC+10</option>
+          <option value="UTC+11">UTC+11</option>
+          <option value="UTC+12">UTC+12</option>
+          <option value="UTC-1">UTC-1</option>
+          <option value="UTC-2">UTC-2</option>
+          <option value="UTC-3">UTC-3</option>
+          <option value="UTC-4">UTC-4</option>
+          <option value="UTC-5">UTC-5</option>
+          <option value="UTC-6">UTC-6</option>
+          <option value="UTC-7">UTC-7</option>
+          <option value="UTC-8">UTC-8</option>
+          <option value="UTC-9">UTC-9</option>
+          <option value="UTC-10">UTC-10</option>
+          <option value="UTC-11">UTC-11</option>
+          <option value="UTC-12">UTC-12</option>
+        </select>
+      </div>
+      <button class="save-btn" type="submit"><i class="fas fa-save"></i> حفظ الإعدادات</button>
+      <div class="settings-alert" id="alertMsg"></div>
+    </form>
+    <div class="footer">&copy; Smart Power Monitor Dashboard</div>
+  </div>
+  <script>
+    // Sidebar, theme toggle
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    sidebarToggle.onclick = () => {
+      const open = !sidebar.classList.contains('open');
+      sidebar.classList.toggle('open', open);
+      document.body.classList.toggle('sidebar-open', open);
+    };
+    sidebarOverlay.onclick = () => {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    };
+    document.querySelectorAll('.sidebar-link').forEach(link =>
+      link.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      })
+    );
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      }
+    });
+    document.getElementById('themeToggleBtn').onclick = function() {
+      document.body.classList.toggle('dark');
+      const icon = this.querySelector('i');
+      icon.classList.toggle('fa-moon');
+      icon.classList.toggle('fa-sun');
+    };
+
+    // إعدادات
+    const form = document.getElementById('settingsForm');
+    const alertMsg = document.getElementById('alertMsg');
+
+    // تحميل الإعدادات الحالية من ESP32 (اختياري)
+    window.onload = function() {
+      fetch('/api/settings')
+        .then(r=>r.json())
+        .then(cfg=>{
+          document.getElementById('ssid').value = cfg.ssid || '';
+          document.getElementById('wifiPass').value = '';
+          document.getElementById('pfThreshold').value = cfg.pfThreshold ?? 0.85;
+          document.getElementById('soundEnable').checked = !!cfg.soundEnable;
+          document.getElementById('timezone').value = cfg.timezone || 'UTC+3';
+        })
+        .catch(()=>{});
+    };
+
+    // حفظ الإعدادات
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      alertMsg.style.display = 'none';
+      alertMsg.className = "settings-alert";
+      const data = {
+        ssid: form.ssid.value.trim(),
+        wifiPass: form.wifiPass.value,
+        pfThreshold: parseFloat(form.pfThreshold.value),
+        soundEnable: form.soundEnable.checked,
+        timezone: form.timezone.value
+      };
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      })
+      .then(resp=>resp.ok ? resp.json() : Promise.reject())
+      .then(r=>{
+        alertMsg.textContent = 'تم حفظ الإعدادات بنجاح!';
+        alertMsg.className = "settings-alert success";
+        alertMsg.style.display = 'block';
+        setTimeout(()=>{alertMsg.style.display='none'}, 3500);
+      })
+      .catch(()=>{
+        alertMsg.textContent = 'حصل خطأ أثناء الحفظ! حاول مرة أخرى.';
+        alertMsg.className = "settings-alert fail";
+        alertMsg.style.display = 'block';
+      });
+    };
+  </script>
+</body>
+</html>

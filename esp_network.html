@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>معلومات الشبكة - Smart Power</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --accent: #3498db;
+      --sidebar-width: 220px;
+      --sidebar-bg: #f4f4f4;
+      --sidebar-text: #222;
+      --sidebar-hover: #e3e8f0;
+      --main-bg: #f0f0f0;
+      --main-text: #2c3e50;
+      --card-bg: #fff;
+      --card-text: #2c3e50;
+      --card-label: #7f8c8d;
+    }
+    body.dark {
+      --sidebar-bg: #1a202a;
+      --sidebar-text: #e6e6e6;
+      --sidebar-hover: #232a36;
+      --main-bg: #121212;
+      --main-text: #f1f1f1;
+      --card-bg: #1e1e1e;
+      --card-text: #f1f1f1;
+      --card-label: #b0b0b0;
+    }
+    body {
+      background: var(--main-bg);
+      color: var(--main-text);
+      font-family: Arial,sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      transition: background .22s, color .22s;
+      direction: rtl;
+    }
+    .sidebar {
+      position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh;
+      background: var(--sidebar-bg); color: var(--sidebar-text); z-index: 2000;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.08);
+      display: flex; flex-direction: column; padding-top: 46px;
+      transform: translateX(-100%);
+      transition: transform .23s, background .22s, color .22s;
+      will-change: transform;
+    }
+    .sidebar.open { transform: none;}
+    .sidebar .sidebar-title { text-align: center; font-weight: bold; font-size: 1.15em; margin-bottom: 27px; color: var(--accent);}
+    .sidebar-links { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 0 20px;}
+    .sidebar-link { display: flex; align-items: center; gap: 13px; padding: 11px 10px; border-radius: 8px; color: inherit; text-decoration: none; font-size: 1em; transition: background .18s, color .19s; cursor: pointer; border: none; background: none; outline: none; font-family: inherit;}
+    .sidebar-link:hover, .sidebar-link.active { background: var(--sidebar-hover); color: var(--accent);}
+    .sidebar-link i { width: 22px; text-align: center; font-size: 1.17em;}
+    .sidebar-footer {text-align: center; padding: 15px 5px 12px 5px; font-size: 0.9em; color: #aaa; border-top: 1px solid #ddd;}
+    body.dark .sidebar-footer { border-top: 1px solid #232a36; color: #888;}
+    .sidebar-toggle {position: fixed; top: 16px; left: 16px; z-index: 2200; border: none; border-radius: 8px; font-size: 24px; cursor: pointer; padding: 8px 13px; background: #fff; color: var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,0.07);}
+    .sidebar-toggle .fa-bars { display: inline;}
+    .sidebar.open ~ .sidebar-toggle .fa-bars { display: none;}
+    .sidebar-toggle .fa-times { display: none;}
+    .sidebar.open ~ .sidebar-toggle .fa-times { display: inline;}
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.13); z-index: 1999;}
+    .sidebar.open ~ .sidebar-overlay { display: block;}
+    body.sidebar-open { overflow: hidden;}
+    .theme-toggle-demo { position: fixed; top: 17px; right: 16px; z-index: 2300; font-size: 21px; color: var(--accent); background: #fff; border-radius: 50%; padding: 8px; cursor: pointer; border: none; outline: none; box-shadow: 0 1px 5px rgba(0,0,0,0.07);}
+    body.dark .theme-toggle-demo { color: #f1c40f; background: #232a36;}
+    .main-content { margin-left: 0; padding: 50px 18px 0 18px; transition: margin .22s; min-height: 100vh;}
+    @media (min-width: 700px) { .sidebar.open ~ .main-content { margin-left: var(--sidebar-width); } }
+
+    .network-title {
+      text-align: center;
+      color: var(--main-text);
+      font-size: 1.5em;
+      margin: 0 0 16px 0;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    .network-card {
+      background: var(--card-bg);
+      border-radius: 13px;
+      max-width: 410px;
+      margin: 22px auto 0 auto;
+      padding: 23px 19px 19px 19px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      font-size: 1.07em;
+      direction: rtl;
+    }
+    .net-row {
+      display: flex; align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .net-row label {
+      min-width: 90px;
+      font-weight: bold;
+      color: var(--card-label);
+    }
+    .net-val {
+      font-weight: bold;
+      color: var(--main-text);
+      direction: ltr;
+    }
+    .net-btn-row {
+      display: flex; gap: 10px; justify-content: center; margin-bottom: 8px;
+    }
+    .net-btn, .ota-btn {
+      padding: 9px 22px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1.04em;
+      transition: background .17s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .net-btn:active, .ota-btn:active { background: #2172b8;}
+    .ota-sec {
+      background: var(--sidebar-hover);
+      border-radius: 9px;
+      padding: 10px 10px 15px 10px;
+      margin-top: 16px;
+      text-align: center;
+    }
+    .ota-label {
+      font-weight: bold;
+      color: var(--accent);
+      margin-bottom: 5px;
+      display: inline-block;
+    }
+    .ota-input {
+      display: block;
+      margin: 12px auto 7px auto;
+      font-size: 1em;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      padding: 7px 10px;
+      background: var(--card-bg);
+      color: var(--main-text);
+      max-width: 250px;
+    }
+    .ota-btn {
+      width: 170px;
+      margin: 0 auto;
+    }
+    .net-alert {
+      text-align: center;
+      margin: 11px 0 0 0;
+      font-size: 1.06em;
+      padding: 7px;
+      border-radius: 7px;
+      display: none;
+    }
+    .net-alert.success { background: #d8f8e6; color: #146c43;}
+    .net-alert.fail { background: #ffe6e6; color: #c0392b;}
+    .footer { margin: 36px auto 0 auto; text-align: center; font-size: 14px; color: #888;}
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">
+      <i class="fas fa-plug"></i> Smart Power
+    </div>
+    <div class="sidebar-links">
+      <a class="sidebar-link" href="index.html">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a class="sidebar-link" href="analytics.html">
+        <i class="fas fa-chart-line"></i> History / Analytics
+      </a>
+      <a class="sidebar-link" href="settings.html">
+        <i class="fas fa-cog"></i> Settings
+      </a>
+      <a class="sidebar-link active" href="network.html">
+        <i class="fas fa-network-wired"></i> Network Info
+      </a>
+      <a class="sidebar-link" href="#system">
+        <i class="fas fa-tools"></i> System / Admin
+      </a>
+      <a class="sidebar-link" href="#login">
+        <i class="fas fa-sign-in-alt"></i> Login
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      &copy; 2025 Smart Power
+    </div>
+  </nav>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open/Close Sidebar">
+    <i class="fas fa-bars"></i>
+    <i class="fas fa-times"></i>
+  </button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <button class="theme-toggle-demo" id="themeToggleBtn" title="Toggle Theme">
+    <i class="fas fa-moon"></i>
+  </button>
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="network-title"><i class="fas fa-network-wired"></i> معلومات الشبكة</div>
+    <div class="network-card" id="netCard">
+      <div class="net-row">
+        <label><i class="fa fa-globe"></i> عنوان IP:</label>
+        <span class="net-val" id="ipVal">--</span>
+      </div>
+      <div class="net-row">
+        <label><i class="fa fa-wifi"></i> الشبكة:</label>
+        <span class="net-val" id="ssidVal">--</span>
+      </div>
+      <div class="net-row">
+        <label><i class="fa fa-signal"></i> الإشارة:</label>
+        <span class="net-val" id="rssiVal">--</span>
+      </div>
+      <div class="net-btn-row">
+        <button class="net-btn" onclick="refreshNetworkInfo()"><i class="fa fa-sync"></i> تحديث</button>
+        <button class="net-btn" onclick="reconnectWifi()"><i class="fa fa-redo"></i> إعادة الاتصال</button>
+      </div>
+      <div class="net-alert" id="netAlert"></div>
+      <div class="ota-sec">
+        <span class="ota-label"><i class="fa fa-upload"></i> ترقية البرنامج (Firmware OTA)</span>
+        <form id="otaForm" enctype="multipart/form-data" autocomplete="off">
+          <input class="ota-input" type="file" id="otaFile" name="firmware" accept=".bin" required>
+          <button class="ota-btn" type="submit"><i class="fa fa-flash"></i> رفع و ترقية</button>
+        </form>
+        <div class="net-alert" id="otaAlert"></div>
+      </div>
+    </div>
+    <div class="footer">&copy; Smart Power Monitor Dashboard</div>
+  </div>
+  <script>
+    // Sidebar, theme toggle
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    sidebarToggle.onclick = () => {
+      const open = !sidebar.classList.contains('open');
+      sidebar.classList.toggle('open', open);
+      document.body.classList.toggle('sidebar-open', open);
+    };
+    sidebarOverlay.onclick = () => {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    };
+    document.querySelectorAll('.sidebar-link').forEach(link =>
+      link.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      })
+    );
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      }
+    });
+    document.getElementById('themeToggleBtn').onclick = function() {
+      document.body.classList.toggle('dark');
+      const icon = this.querySelector('i');
+      icon.classList.toggle('fa-moon');
+      icon.classList.toggle('fa-sun');
+    };
+
+    // Network Info API
+    function setNetAlert(msg, type="success") {
+      const a = document.getElementById('netAlert');
+      a.textContent = msg;
+      a.className = "net-alert " + type;
+      a.style.display = "block";
+      setTimeout(()=>{a.style.display="none";}, 2500);
+    }
+    function refreshNetworkInfo() {
+      fetch('/api/network')
+        .then(r=>r.json())
+        .then(data=>{
+          document.getElementById('ipVal').textContent = data.ip || '--';
+          document.getElementById('ssidVal').textContent = data.ssid || '--';
+          document.getElementById('rssiVal').textContent = (data.rssi !== undefined ? (data.rssi + " dBm") : '--');
+          setNetAlert("تم التحديث بنجاح", "success");
+        })
+        .catch(()=>{
+          setNetAlert("تعذر جلب معلومات الشبكة", "fail");
+        });
+    }
+    function reconnectWifi() {
+      setNetAlert("جاري إعادة الاتصال ...", "success");
+      fetch('/api/wifi/reconnect', {method: 'POST'})
+        .then(r=>r.json())
+        .then(data=>{
+          if(data.success) setNetAlert("تمت إعادة الاتصال بنجاح", "success");
+          else setNetAlert("فشل في إعادة الاتصال", "fail");
+          refreshNetworkInfo();
+        })
+        .catch(()=>setNetAlert("فشل في إعادة الاتصال", "fail"));
+    }
+    // OTA Firmware
+    document.getElementById('otaForm').onsubmit = function(e) {
+      e.preventDefault();
+      const otaAlert = document.getElementById('otaAlert');
+      otaAlert.style.display = "none";
+      otaAlert.className = "net-alert";
+      const file = document.getElementById('otaFile').files[0];
+      if (!file) {
+        otaAlert.textContent = "يرجى اختيار ملف .bin";
+        otaAlert.className = "net-alert fail";
+        otaAlert.style.display = "block";
+        return;
+      }
+      otaAlert.textContent = "جاري الرفع ...";
+      otaAlert.className = "net-alert success";
+      otaAlert.style.display = "block";
+      const formData = new FormData();
+      formData.append('firmware', file);
+      fetch('/api/ota', {
+        method: 'POST',
+        body: formData
+      })
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.success) {
+          otaAlert.textContent = "تم رفع وترقية البرنامج بنجاح! سيتم إعادة التشغيل تلقائياً.";
+          otaAlert.className = "net-alert success";
+        } else {
+          otaAlert.textContent = "فشل الترقية: " + (data.msg||"");
+          otaAlert.className = "net-alert fail";
+        }
+      })
+      .catch(()=>{
+        otaAlert.textContent = "خطأ في الاتصال أو فشل الترقية!";
+        otaAlert.className = "net-alert fail";
+      });
+    };
+
+    // تحميل معلومات الشبكة عند الدخول
+    window.onload = refreshNetworkInfo;
+  </script>
+</body>
+</html>

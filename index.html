@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Power Monitor</title>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Chart.js CDN (خيار مدمج ESP: ضع نسخة مصغرة محلياً لو لزم الأمر) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --accent: #3498db;
+      --sidebar-width: 220px;
+
+      /* Light theme */
+      --sidebar-bg: #f4f4f4;
+      --sidebar-text: #222;
+      --sidebar-hover: #e3e8f0;
+      --toggle-bg: #fff;
+      --toggle-color: #3498db;
+      --overlay-bg: rgba(0,0,0,0.13);
+      --shadow: 0 2px 18px rgba(0,0,0,0.08);
+
+      --main-bg: #f0f0f0;
+      --main-text: #2c3e50;
+
+      --card-bg: #fff;
+      --card-text: #2c3e50;
+      --card-label: #7f8c8d;
+    }
+    body.dark {
+      --sidebar-bg: #1a202a;
+      --sidebar-text: #e6e6e6;
+      --sidebar-hover: #232a36;
+      --toggle-bg: #232a36;
+      --toggle-color: #f1c40f;
+      --overlay-bg: rgba(0,0,0,0.22);
+
+      --main-bg: #121212;
+      --main-text: #f1f1f1;
+
+      --card-bg: #1e1e1e;
+      --card-text: #f1f1f1;
+      --card-label: #b0b0b0;
+    }
+    body {
+      background: var(--main-bg);
+      color: var(--main-text);
+      font-family: Arial,sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      transition: background .22s, color .22s;
+    }
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      z-index: 2000;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      padding-top: 46px;
+      transform: translateX(-100%);
+      transition: transform .23s, background .22s, color .22s;
+      will-change: transform;
+    }
+    .sidebar.open { transform: none; }
+    .sidebar .sidebar-title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.15em;
+      margin-bottom: 27px;
+      color: var(--accent);
+      letter-spacing: .5px;
+    }
+    .sidebar-links {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 0 20px;
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 13px;
+      padding: 11px 10px;
+      border-radius: 8px;
+      color: inherit; text-decoration: none; font-size: 1em;
+      transition: background .18s, color .19s;
+      cursor: pointer; border: none; background: none; outline: none;
+      font-family: inherit;
+    }
+    .sidebar-link:hover, .sidebar-link.active {
+      background: var(--sidebar-hover);
+      color: var(--accent);
+    }
+    .sidebar-link i {
+      width: 22px; text-align: center; font-size: 1.17em;
+    }
+    .sidebar-footer {
+      text-align: center;
+      padding: 15px 5px 12px 5px;
+      font-size: 0.9em;
+      color: #aaa;
+      border-top: 1px solid #ddd;
+    }
+    body.dark .sidebar-footer {
+      border-top: 1px solid #232a36;
+      color: #888;
+    }
+    /* SIDEBAR TOGGLER */
+    .sidebar-toggle {
+      position: fixed; top: 16px; left: 16px; z-index: 2200;
+      border: none; border-radius: 8px; font-size: 24px;
+      cursor: pointer; padding: 8px 13px;
+      background: var(--toggle-bg); color: var(--toggle-color);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+      transition: background .18s, color .18s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sidebar-toggle:active { background: #e7f2fb; }
+    body.dark .sidebar-toggle:active { background: #232a36; }
+    .sidebar-toggle .fa-bars { display: inline; }
+    .sidebar.open ~ .sidebar-toggle .fa-bars { display: none; }
+    .sidebar-toggle .fa-times { display: none; }
+    .sidebar.open ~ .sidebar-toggle .fa-times { display: inline; }
+    @media (max-width: 700px) {
+      .sidebar { width: 78vw; min-width: 130px; max-width: 340px; padding-top: 38px; }
+      .sidebar-toggle { font-size: 22px; padding: 7px 11px; }
+    }
+    /* OVERLAY */
+    .sidebar-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--overlay-bg); z-index: 1999; transition: opacity .21s;
+    }
+    .sidebar.open ~ .sidebar-overlay { display: block; }
+    body.sidebar-open { overflow: hidden; }
+    /* MAIN CONTENT */
+    .main-content {
+      margin-left: 0;
+      padding: 50px 18px 0 18px;
+      transition: margin .22s;
+      min-height: 100vh;
+    }
+    @media (min-width: 700px) {
+      .sidebar.open ~ .main-content { margin-left: var(--sidebar-width); }
+    }
+    /* Theme toggle button */
+    .theme-toggle-demo {
+      position: fixed;
+      top: 17px;
+      right: 16px;
+      z-index: 2300;
+      font-size: 21px;
+      color: var(--accent);
+      background: var(--toggle-bg);
+      border-radius: 50%;
+      padding: 8px;
+      cursor: pointer;
+      transition: color .18s, background .18s;
+      border: none;
+      outline: none;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.07);
+    }
+    body.dark .theme-toggle-demo {
+      color: var(--toggle-color);
+      background: var(--toggle-bg);
+    }
+    /* CARDS & CHARTS (من التصميم الأول) */
+    .dashboard-title {
+      text-align: center;
+      color: var(--main-text);
+      padding: 12px 0 12px 0;
+      font-size: 1.5em;
+      margin: 0;
+      letter-spacing: 1px;
+      font-weight: bold;
+    }
+    .alert {
+      text-align: center;
+      padding: 10px;
+      margin: 10px auto 0 auto;
+      background-color: #ffe6e6;
+      color: #c0392b;
+      font-weight: bold;
+      border-radius: 8px;
+      display: none;
+      max-width: 550px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 25px auto 0 auto;
+      padding: 0 0 20px 0;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 15px;
+      padding: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+      transition: background .22s, color .22s;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+    }
+    .icon { font-size: 32px; margin-right: 15px; }
+    .value { font-size: 24px; color: var(--card-text);}
+    .label { color: var(--card-label); font-size: 14px; }
+    canvas { margin-top: 10px; }
+    .unit { font-size: 14px; margin-left: 5px; color: #999; }
+    .footer {
+      margin: 30px auto 0 auto;
+      text-align: center;
+      font-size: 14px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">
+      <i class="fas fa-plug"></i> Smart Power
+    </div>
+    <div class="sidebar-links">
+      <a class="sidebar-link active" href="#">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a class="sidebar-link" href="#history">
+        <i class="fas fa-chart-line"></i> History / Analytics
+      </a>
+      <a class="sidebar-link" href="#settings">
+        <i class="fas fa-cog"></i> Settings
+      </a>
+      <a class="sidebar-link" href="#network">
+        <i class="fas fa-network-wired"></i> Network Info
+      </a>
+      <a class="sidebar-link" href="#system">
+        <i class="fas fa-tools"></i> System / Admin
+      </a>
+      <a class="sidebar-link" href="#login">
+        <i class="fas fa-sign-in-alt"></i> Login
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      &copy; 2025 Smart Power
+    </div>
+  </nav>
+  <!-- زر فتح/إغلاق السايدبار -->
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open/Close Sidebar">
+    <i class="fas fa-bars"></i>
+    <i class="fas fa-times"></i>
+  </button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <!-- زر تغيير الوضع -->
+  <button class="theme-toggle-demo" id="themeToggleBtn" title="Toggle Theme">
+    <i class="fas fa-moon"></i>
+  </button>
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="dashboard-title"><i class="fas fa-plug"></i> Smart Power Monitor</div>
+    <div class="alert" id="alertBox">⚠️ Low Power Factor Detected!</div>
+    <audio id="alertSound" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3" preload="auto"></audio>
+    <div class="grid" id="cards"></div>
+    <div class="footer">&copy; Smart Power Monitor Dashboard</div>
+  </div>
+  <script>
+    // Sidebar logic
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    sidebarToggle.onclick = () => {
+      const open = !sidebar.classList.contains('open');
+      sidebar.classList.toggle('open', open);
+      document.body.classList.toggle('sidebar-open', open);
+    };
+    sidebarOverlay.onclick = () => {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    };
+    document.querySelectorAll('.sidebar-link').forEach(link =>
+      link.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      })
+    );
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      }
+    });
+    // Theme toggle
+    document.getElementById('themeToggleBtn').onclick = function() {
+      document.body.classList.toggle('dark');
+      // Toggle icon
+      const icon = this.querySelector('i');
+      icon.classList.toggle('fa-moon');
+      icon.classList.toggle('fa-sun');
+    };
+
+    // Dashboard logic (cards + charts)
+    const labels = [];
+    const charts = {};
+    const dataStore = {};
+    let alertPlayed = false;
+
+    const measurements = [
+      { key: 'voltage', label: 'Voltage', unit: 'V', icon: 'bolt', color: '#f1c40f' },
+      { key: 'current', label: 'Current', unit: 'A', icon: 'exchange-alt', color: '#3498db' },
+      { key: 'power', label: 'Power', unit: 'W', icon: 'plug', color: '#e74c3c' },
+      { key: 'energy', label: 'Energy', unit: 'kWh', icon: 'battery-full', color: '#2ecc71' },
+      { key: 'apparent', label: 'Apparent Power', unit: 'VA', icon: 'bolt-lightning', color: '#8e44ad' },
+      { key: 'reactive', label: 'Reactive Power', unit: 'VAR', icon: 'bolt', color: '#d35400' },
+      { key: 'frequency', label: 'Frequency', unit: 'Hz', icon: 'wave-square', color: '#9b59b6' },
+      { key: 'pf', label: 'Power Factor', unit: '', icon: 'percent', color: '#e67e22' }
+    ];
+    measurements.forEach(m => dataStore[m.key] = []);
+
+    function createCard(m) {
+      return `
+        <div class="card">
+          <div class="card-header">
+            <i class="fas fa-${m.icon} icon" style="color:${m.color}"></i>
+            <div>
+              <div class="label">${m.label}</div>
+              <div class="value" id="${m.key}_val">-- <span class="unit">${m.unit}</span></div>
+            </div>
+          </div>
+          <canvas id="chart_${m.key}" height="100"></canvas>
+        </div>`;
+    }
+    function createChart(ctx, color, dataArr) {
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: dataArr,
+            borderColor: color,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          scales: { x: { display: false }, y: { beginAtZero: true } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function simulateData() {
+      const now = new Date();
+      labels.push(now.toLocaleTimeString());
+
+      const v = +(220 + Math.random() * 10).toFixed(1);
+      const c = +(Math.random() * 5).toFixed(2);
+      const p = +(v * c * 0.8).toFixed(1);
+      const s = +(v * c).toFixed(1);
+      const q = +(Math.sqrt(s * s - p * p)).toFixed(1);
+      const e = +(+(dataStore.energy.at(-1) || 0) + (p / 3600000) * 2).toFixed(3);
+      const f = +(49.5 + Math.random()).toFixed(2);
+      const pf = +(p / s).toFixed(2);
+
+      const values = { voltage: v, current: c, power: p, energy: e, frequency: f, pf: pf, apparent: s, reactive: q };
+
+      measurements.forEach(m => {
+        dataStore[m.key].push(values[m.key]);
+        if (dataStore[m.key].length > 30) dataStore[m.key].shift();
+        document.getElementById(`${m.key}_val`).innerHTML = values[m.key] + `<span class="unit">${m.unit}</span>`;
+        if (charts[m.key]) charts[m.key].update();
+      });
+
+      if (labels.length > 30) labels.shift();
+
+      const alertBox = document.getElementById('alertBox');
+      const alertSound = document.getElementById('alertSound');
+      if (pf < 0.8) {
+        alertBox.style.display = 'block';
+        if (!alertPlayed) {
+          alertSound.play();
+          alertPlayed = true;
+        }
+      } else {
+        alertBox.style.display = 'none';
+        alertPlayed = false;
+      }
+    }
+
+    // إنشاء الكروت والرسوم البيانية
+    document.getElementById("cards").innerHTML = measurements.map(createCard).join('');
+    measurements.forEach(m => {
+      const ctx = document.getElementById(`chart_${m.key}`).getContext('2d');
+      charts[m.key] = createChart(ctx, m.color, dataStore[m.key]);
+    });
+
+    // تحديث البيانات كل 2 ثانية (محاكاة)
+    simulateData();
+    setInterval(simulateData, 2000);
+  </script>
+</body>
+</html>

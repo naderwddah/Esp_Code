@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>History / Analytics - Smart Power</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --accent: #3498db;
+      --sidebar-width: 220px;
+      --sidebar-bg: #f4f4f4;
+      --sidebar-text: #222;
+      --sidebar-hover: #e3e8f0;
+      --main-bg: #f0f0f0;
+      --main-text: #2c3e50;
+      --card-bg: #fff;
+      --card-text: #2c3e50;
+      --card-label: #7f8c8d;
+    }
+    body.dark {
+      --sidebar-bg: #1a202a;
+      --sidebar-text: #e6e6e6;
+      --sidebar-hover: #232a36;
+      --main-bg: #121212;
+      --main-text: #f1f1f1;
+      --card-bg: #1e1e1e;
+      --card-text: #f1f1f1;
+      --card-label: #b0b0b0;
+    }
+    body {
+      background: var(--main-bg);
+      color: var(--main-text);
+      font-family: Arial,sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      transition: background .22s, color .22s;
+    }
+    /* Sidebar & nav styles... (نفس السابق) */
+    .sidebar {
+      position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh;
+      background: var(--sidebar-bg); color: var(--sidebar-text); z-index: 2000;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.08);
+      display: flex; flex-direction: column; padding-top: 46px;
+      transform: translateX(-100%);
+      transition: transform .23s, background .22s, color .22s;
+      will-change: transform;
+    }
+    .sidebar.open { transform: none;}
+    .sidebar .sidebar-title { text-align: center; font-weight: bold; font-size: 1.15em; margin-bottom: 27px; color: var(--accent);}
+    .sidebar-links { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 0 20px;}
+    .sidebar-link { display: flex; align-items: center; gap: 13px; padding: 11px 10px; border-radius: 8px; color: inherit; text-decoration: none; font-size: 1em; transition: background .18s, color .19s; cursor: pointer; border: none; background: none; outline: none; font-family: inherit;}
+    .sidebar-link:hover, .sidebar-link.active { background: var(--sidebar-hover); color: var(--accent);}
+    .sidebar-link i { width: 22px; text-align: center; font-size: 1.17em;}
+    .sidebar-footer {text-align: center; padding: 15px 5px 12px 5px; font-size: 0.9em; color: #aaa; border-top: 1px solid #ddd;}
+    body.dark .sidebar-footer { border-top: 1px solid #232a36; color: #888;}
+    .sidebar-toggle {position: fixed; top: 16px; left: 16px; z-index: 2200; border: none; border-radius: 8px; font-size: 24px; cursor: pointer; padding: 8px 13px; background: #fff; color: var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,0.07);}
+    .sidebar-toggle .fa-bars { display: inline;}
+    .sidebar.open ~ .sidebar-toggle .fa-bars { display: none;}
+    .sidebar-toggle .fa-times { display: none;}
+    .sidebar.open ~ .sidebar-toggle .fa-times { display: inline;}
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.13); z-index: 1999;}
+    .sidebar.open ~ .sidebar-overlay { display: block;}
+    body.sidebar-open { overflow: hidden;}
+    .theme-toggle-demo { position: fixed; top: 17px; right: 16px; z-index: 2300; font-size: 21px; color: var(--accent); background: #fff; border-radius: 50%; padding: 8px; cursor: pointer; border: none; outline: none; box-shadow: 0 1px 5px rgba(0,0,0,0.07);}
+    body.dark .theme-toggle-demo { color: #f1c40f; background: #232a36;}
+
+    /* Main Content */
+    .main-content { margin-left: 0; padding: 50px 14px 0 14px; transition: margin .22s; min-height: 100vh;}
+    @media (min-width: 700px) { .sidebar.open ~ .main-content { margin-left: var(--sidebar-width); } }
+
+    .analytics-title { text-align: center; color: var(--main-text); font-size: 1.5em; margin: 0 0 10px 0; font-weight: bold;}
+    .filter-row {
+      display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    select, input[type="date"] {
+      font-size: 1em; border-radius: 7px; border: 1px solid #ccc; padding: 5px 10px; outline: none;
+      background: var(--card-bg); color: var(--main-text);
+      transition: background .2s, color .2s;
+    }
+    .section-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin: 15px auto;
+      padding: 18px 10px 14px 10px;
+      max-width: 900px;
+    }
+    .section-title {
+      font-weight: bold;
+      color: var(--main-text);
+      font-size: 1.1em;
+      margin-bottom: 10px;
+      letter-spacing: .2px;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(250px,1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .analytics-chart { background: none; padding:0;}
+    .best-worst-list {
+      display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;
+      margin-top: 12px;
+    }
+    .day-link {
+      display: block;
+      background: var(--card-bg);
+      color: var(--accent);
+      padding: 9px 16px;
+      margin-bottom: 5px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border: 1px solid #e0e0e0;
+      transition: background .15s, color .15s;
+      cursor: pointer;
+    }
+    .day-link:hover { background: var(--sidebar-hover);}
+    .footer { margin: 36px auto 0 auto; text-align: center; font-size: 14px; color: #888;}
+    /* تفاصيل اليوم */
+    .day-detail-pop {
+      position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.11); z-index: 5000; display: none; align-items: center; justify-content: center;
+    }
+    .day-detail-box {
+      background: var(--card-bg); color: var(--card-text);
+      border-radius: 12px; min-width: 240px; max-width: 340px;
+      padding: 18px 14px 12px 14px;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.11);
+      position: relative;
+    }
+    .close-detail { position: absolute; top: 8px; right: 10px; font-size: 1.2em; color: #b00; cursor: pointer;}
+    .day-detail-title { font-size: 1.08em; font-weight: bold; margin-bottom: 9px;}
+    .day-detail-list { font-size: .98em; line-height: 1.8;}
+  </style>
+</head>
+<body>
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">
+      <i class="fas fa-plug"></i> Smart Power
+    </div>
+    <div class="sidebar-links">
+      <a class="sidebar-link" href="index.html">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a class="sidebar-link active" href="analytics.html">
+        <i class="fas fa-chart-line"></i> History / Analytics
+      </a>
+      <a class="sidebar-link" href="#settings">
+        <i class="fas fa-cog"></i> Settings
+      </a>
+      <a class="sidebar-link" href="#network">
+        <i class="fas fa-network-wired"></i> Network Info
+      </a>
+      <a class="sidebar-link" href="#system">
+        <i class="fas fa-tools"></i> System / Admin
+      </a>
+      <a class="sidebar-link" href="#login">
+        <i class="fas fa-sign-in-alt"></i> Login
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      &copy; 2025 Smart Power
+    </div>
+  </nav>
+  <!-- زر فتح/إغلاق السايدبار -->
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open/Close Sidebar">
+    <i class="fas fa-bars"></i>
+    <i class="fas fa-times"></i>
+  </button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <!-- زر تغيير الوضع -->
+  <button class="theme-toggle-demo" id="themeToggleBtn" title="Toggle Theme">
+    <i class="fas fa-moon"></i>
+  </button>
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="analytics-title"><i class="fas fa-chart-line"></i> History / Analytics</div>
+    <div class="filter-row">
+      <label for="periodSelect"><i class="fa fa-filter"></i> Period</label>
+      <select id="periodSelect">
+        <option value="today">اليوم</option>
+        <option value="week">الأسبوع</option>
+        <option value="month">الشهر</option>
+        <option value="custom">مخصص</option>
+      </select>
+      <input type="date" id="fromDate" style="display:none">
+      <span id="toLabel" style="display:none">إلى</span>
+      <input type="date" id="toDate" style="display:none">
+    </div>
+    <div class="section-card">
+      <div class="section-title">استهلاك الطاقة التراكمي (kWh) <span style="font-weight:normal;color:var(--card-label);font-size:.92em;">حسب الفترة</span></div>
+      <canvas id="cumulativeChart" height="110"></canvas>
+    </div>
+    <div class="section-card">
+      <div class="section-title">مخططات الأداء التاريخية</div>
+      <div class="charts-grid">
+        <div class="analytics-chart">
+          <div class="label">الطاقة Power</div>
+          <canvas id="powerChart" height="70"></canvas>
+        </div>
+        <div class="analytics-chart">
+          <div class="label">الجهد Voltage</div>
+          <canvas id="voltageChart" height="70"></canvas>
+        </div>
+        <div class="analytics-chart">
+          <div class="label">التيار Current</div>
+          <canvas id="currentChart" height="70"></canvas>
+        </div>
+        <div class="analytics-chart">
+          <div class="label">معامل القدرة PF</div>
+          <canvas id="pfChart" height="70"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="section-card">
+      <div class="section-title">أفضل وأسوأ الأيام</div>
+      <div class="best-worst-list" id="bestWorstList">
+        <!-- سيتم تعبئتها ديناميكياً -->
+      </div>
+    </div>
+    <div class="footer">&copy; Smart Power Monitor Dashboard</div>
+  </div>
+  <!-- نافذة تفاصيل اليوم -->
+  <div class="day-detail-pop" id="dayDetailPop">
+    <div class="day-detail-box">
+      <span class="close-detail" id="closeDetailBtn">&times;</span>
+      <div class="day-detail-title" id="dayDetailTitle"></div>
+      <div class="day-detail-list" id="dayDetailList"></div>
+    </div>
+  </div>
+  <script>
+    // Sidebar, theme toggle (نفس السابق)
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    sidebarToggle.onclick = () => {
+      const open = !sidebar.classList.contains('open');
+      sidebar.classList.toggle('open', open);
+      document.body.classList.toggle('sidebar-open', open);
+    };
+    sidebarOverlay.onclick = () => {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    };
+    document.querySelectorAll('.sidebar-link').forEach(link =>
+      link.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      })
+    );
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      }
+    });
+    document.getElementById('themeToggleBtn').onclick = function() {
+      document.body.classList.toggle('dark');
+      const icon = this.querySelector('i');
+      icon.classList.toggle('fa-moon');
+      icon.classList.toggle('fa-sun');
+    };
+
+    // فلترة الفترة الزمنية
+    const periodSelect = document.getElementById('periodSelect');
+    const fromDate = document.getElementById('fromDate');
+    const toDate = document.getElementById('toDate');
+    const toLabel = document.getElementById('toLabel');
+    periodSelect.onchange = function() {
+      if (this.value === 'custom') {
+        fromDate.style.display = toDate.style.display = toLabel.style.display = 'inline-block';
+      } else {
+        fromDate.style.display = toDate.style.display = toLabel.style.display = 'none';
+      }
+      drawCharts();
+      fillBestWorst();
+    };
+
+    // بيانات وهمية للتجربة (استبدلها ببيانات حقيقية لاحقاً)
+    let mockDays = []; // [{date, kwh, power, voltage, current, pf, ...}]
+    function generateMockData() {
+      mockDays = [];
+      let base = new Date();
+      base.setDate(base.getDate() - 29);
+      for (let i=0; i<30; ++i) {
+        const d = new Date(base.getTime());
+        d.setDate(base.getDate()+i);
+        mockDays.push({
+          date: d.toISOString().slice(0,10),
+          kwh: +(3 + Math.random()*3 + (i%7===0?Math.random()*3:0)).toFixed(2),
+          power: +(300+Math.random()*120).toFixed(1),
+          voltage: +(218+Math.random()*9).toFixed(1),
+          current: +(1 + Math.random()*2.5).toFixed(2),
+          pf: +(0.8+Math.random()*0.18).toFixed(2)
+        });
+      }
+    }
+    generateMockData();
+
+    // رسم المخططات
+    let cumulativeChart, powerChart, voltageChart, currentChart, pfChart;
+    function drawCharts() {
+      // فلترة البيانات حسب الفترة
+      let days = mockDays.slice();
+      const per = periodSelect.value;
+      if (per === "today") days = [mockDays[mockDays.length-1]];
+      else if (per === "week") days = mockDays.slice(-7);
+      else if (per === "month") days = mockDays.slice(-30);
+      else if (per === "custom") {
+        let from = fromDate.value, to = toDate.value;
+        if (from && to) days = mockDays.filter(d => d.date >= from && d.date <= to);
+      }
+
+      // بيانات للرسم التراكمي
+      const labels = days.map(d=>d.date.slice(5));
+      const kwhs = days.map(d=>d.kwh);
+
+      if (cumulativeChart) cumulativeChart.destroy();
+      cumulativeChart = new Chart(document.getElementById('cumulativeChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'kWh',
+            data: kwhs,
+            backgroundColor: '#3498dbcc'
+          }]
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          scales: { x: { display: true }, y: { beginAtZero: true } },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // رسم كل مخطط منفصل
+      function chart1(id, key, label, color) {
+        if (window[id]) window[id].destroy();
+        window[id] = new Chart(document.getElementById(id).getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: label, data: days.map(d=>d[key]),
+              borderColor: color, borderWidth: 2, fill: false, tension: 0.35, pointRadius: 0
+            }]
+          },
+          options: {
+            animation: false, responsive: true,
+            scales: { x: { display: false }, y: { beginAtZero: true } },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+      chart1('powerChart','power','Power','#e74c3c');
+      chart1('voltageChart','voltage','Voltage','#f1c40f');
+      chart1('currentChart','current','Current','#3498db');
+      chart1('pfChart','pf','PF','#e67e22');
+    }
+
+    // أفضل وأسوأ الأيام
+    function fillBestWorst() {
+      let days = mockDays.slice();
+      const per = periodSelect.value;
+      if (per === "today") days = [mockDays[mockDays.length-1]];
+      else if (per === "week") days = mockDays.slice(-7);
+      else if (per === "month") days = mockDays.slice(-30);
+      else if (per === "custom") {
+        let from = fromDate.value, to = toDate.value;
+        if (from && to) days = mockDays.filter(d => d.date >= from && d.date <= to);
+      }
+      // ترتيب وتصنيف الأيام
+      let sorted = days.slice().sort((a,b)=>b.kwh-a.kwh);
+      const best = sorted.slice(0,2), worst = sorted.slice(-2).reverse();
+      let html = '<div><b>أفضل الأيام:</b></div>';
+      best.forEach(d => html += `<a class="day-link" href="#" data-date="${d.date}">${d.date} (${d.kwh} kWh)</a>`);
+      html += '<div style="margin-top:9px"><b>أسوأ الأيام:</b></div>';
+      worst.forEach(d => html += `<a class="day-link" href="#" data-date="${d.date}">${d.date} (${d.kwh} kWh)</a>`);
+      document.getElementById('bestWorstList').innerHTML = html;
+      // ربط الحدث
+      document.querySelectorAll('.day-link').forEach(el => {
+        el.onclick = function(e) {
+          e.preventDefault();
+          showDayDetail(this.dataset.date);
+        };
+      });
+    }
+
+    // نافذة تفاصيل اليوم
+    function showDayDetail(date) {
+      const day = mockDays.find(d=>d.date===date);
+      if (!day) return;
+      document.getElementById('dayDetailTitle').textContent = "تفاصيل يوم " + day.date;
+      document.getElementById('dayDetailList').innerHTML =
+        `<b>الاستهلاك:</b> ${day.kwh} kWh<br>
+         <b>الطاقة:</b> ${day.power} W<br>
+         <b>الجهد:</b> ${day.voltage} V<br>
+         <b>التيار:</b> ${day.current} A<br>
+         <b>معامل القدرة:</b> ${day.pf}`;
+      document.getElementById('dayDetailPop').style.display = 'flex';
+    }
+    document.getElementById('closeDetailBtn').onclick = function() {
+      document.getElementById('dayDetailPop').style.display = 'none';
+    };
+    // إخفاء النافذة عند الضغط بالخارج
+    document.getElementById('dayDetailPop').onclick = function(e) {
+      if (e.target === this) this.style.display = 'none';
+    };
+
+    // تفعيل المخططات عند التحميل
+    window.onload = function() {
+      drawCharts();
+      fillBestWorst();
+    };
+    // تحديث عند تغيير التواريخ
+    fromDate.onchange = toDate.onchange = function() {
+      drawCharts();
+      fillBestWorst();
+    };
+  </script>
+</body>
+</html>
